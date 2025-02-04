@@ -327,9 +327,9 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
 def main():
     st.markdown(
         f"""
-        <div style='position: fixed; top: 20px; right: 20px; text-align: right; opacity: 0.5;'>
-            <div style='color: #666; font-size: 12px; margin-bottom: 5px;'>App Version: {APP_VERSION}</div>
-            <div style='color: #666; font-size: 12px;'>Powered by Dataquatz</div>
+        <div style='position: fixed; top: 20px; right: 20px; text-align: right; opacity: 0.75;'>
+            <div style='color: #666; font-size: 14px; margin-bottom: 5px;'>App Version: {APP_VERSION}</div>
+            <div style='color: #666; font-size: 14px;'>Powered by Dataquatz</div>
             <img src='https://raw.githubusercontent.com/Mountain311/LLM_checker/main/DQ_logo.jpg' width='50'>
         </div>
         """,
