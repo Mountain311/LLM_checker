@@ -240,7 +240,7 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
         canvas.saveState()
         # Add logo
         logo = Image(LOGO_PATH, width=20, height=20)
-        logo.drawOn(canvas, width - 40, 40)
+        logo.drawOn(canvas, width - 80, 40)
         # Add footer text
         canvas.setFillColorRGB(0.5, 0.5, 0.5, 0.4)
         canvas.setFont("Helvetica", 10)
@@ -274,7 +274,7 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
         overall_grade = feedback.split("OVERALL_GRADE:")[
             1].split("\n")[0].strip()
         c.setFont("Helvetica-Bold", 14)
-        c.drawString(50, height - 160, f"Overall Grade: {overall_grade}/10")
+        c.drawString(50, height - 160, f"Overall Grade: {overall_grade}")
 
     # Another separator line before detailed feedback
     c.setLineWidth(1)
