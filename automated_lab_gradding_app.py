@@ -175,7 +175,7 @@ def format_feedback(feedback, student_name, student_roll, code_analysis=""):
     </div>
     
     <div style="font-size: 18px; font-weight: bold; margin: 20px 0;">
-    Overall Grade: {overall_grade}/10
+    Overall Grade: {overall_grade}
     </div>
     
     <hr style="border-top: 1px solid #eee; margin: 20px 0;">
@@ -240,7 +240,7 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
         canvas.saveState()
         # Add logo
         logo = Image(LOGO_PATH, width=20, height=20)
-        logo.drawOn(canvas, width - 120, 40)
+        logo.drawOn(canvas, width - 40, 40)
         # Add footer text
         canvas.setFillColorRGB(0.5, 0.5, 0.5, 0.4)
         canvas.setFont("Helvetica", 10)
