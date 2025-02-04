@@ -390,7 +390,7 @@ def main():
             )
 
     # Add documentation section in sidebar
-    st.sidebar.markdown("""
+    st.sidebar.markdown(f"""
     ### Version: {APP_VERSION}
     
     ### How to Use This App
