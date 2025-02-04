@@ -220,7 +220,7 @@ def format_feedback(feedback, student_name, student_roll, code_analysis=""):
     # Add watermark to the app interface
     formatted_feedback += """
     <div style='position: fixed; bottom: 10px; right: 10px; opacity: 0.3;'>
-        <img src='https://raw.githubusercontent.com/Mountain311/LLM_checker/main/DQ_logo.jpg' width='100'>
+        <img src='https://raw.githubusercontent.com/Mountain311/LLM_checker/main/DQ_logo.jpg' width='25'>
         <div style='color: #666; font-size: 12px; text-align: right;'>Powered by Dataquatz</div>
     </div>
     """
@@ -329,8 +329,8 @@ def main():
         f"""
         <div style='position: fixed; top: 20px; right: 20px; text-align: right; opacity: 0.5;'>
             <div style='color: #666; font-size: 12px; margin-bottom: 5px;'>App Version: {APP_VERSION}</div>
-            <img src='https://raw.githubusercontent.com/Mountain311/LLM_checker/main/DQ_logo.jpg' width='100'>
             <div style='color: #666; font-size: 12px;'>Powered by Dataquatz</div>
+            <img src='https://raw.githubusercontent.com/Mountain311/LLM_checker/main/DQ_logo.jpg' width='50'>
         </div>
         """,
         unsafe_allow_html=True
