@@ -1,20 +1,20 @@
 import streamlit as st
 import nbformat
 import openai
-import os
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import simpleSplit
 from datetime import datetime
-import pandas as pd
 import io
 import re
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name
+from reportlab.platypus import Image
 
 # Constants
-APP_VERSION = "v2.4"
+APP_VERSION = "v2.4.2"
+LOGO_PATH = "DQ_logo.jpg"
 
 # Get API key from Streamlit secrets
 api_key = st.secrets["OPENAI_API_KEY"]
@@ -217,6 +217,14 @@ def format_feedback(feedback, student_name, student_roll, code_analysis=""):
         </div>
         """
 
+    # Add watermark to the app interface
+    formatted_feedback += """
+    <div style='position: fixed; bottom: 10px; right: 10px; opacity: 0.3;'>
+        <img src='https://raw.githubusercontent.com/yourusername/DQ_logo/main/DQ_logo.jpg' width='100'>
+        <div style='color: #666; font-size: 12px; text-align: right;'>Powered by Dataquatz</div>
+    </div>
+    """
+
     formatted_feedback += "</div>"
 
     return formatted_feedback
@@ -226,6 +234,18 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
+
+    # Add logo and footer to all pages
+    def add_footer(canvas):
+        canvas.saveState()
+        # Add logo
+        logo = Image(LOGO_PATH, width=80, height=40)
+        logo.drawOn(canvas, width - 120, 40)
+        # Add footer text
+        canvas.setFillColorRGB(0.5, 0.5, 0.5, 0.4)
+        canvas.setFont("Helvetica", 10)
+        canvas.drawRightString(width - 40, 30, "Powered by Dataquatz")
+        canvas.restoreState()
 
     # Header with larger, bold font
     c.setFont("Helvetica-Bold", 18)
@@ -268,6 +288,9 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
     all_content = feedback + "\n\n" + code_analysis if code_analysis else feedback
     sections = all_content.split('\n')
 
+    # Add footer to first page
+    add_footer(c)
+
     for line in sections:
         line = line.strip()
         if not line:
@@ -278,6 +301,7 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
             c.setFont("Helvetica-Bold", 12)
             if y_position < 100:
                 c.showPage()
+                add_footer(c)
                 y_position = height - 50
             y_position -= 20
         else:
@@ -288,6 +312,7 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
         for wrapped_line in wrapped_text:
             if y_position < 50:
                 c.showPage()
+                add_footer(c)
                 y_position = height - 50
                 c.setFont("Helvetica", 10)
 
@@ -297,82 +322,6 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
     c.save()
     buffer.seek(0)
     return buffer
-
-
-def create_excel_report(feedback, student_name, student_roll, code_analysis=""):
-    scores = extract_scores(feedback)
-
-    # Create DataFrame
-    df = pd.DataFrame({
-        'Category': list(scores.keys()),
-        'Score': list(scores.values()),
-        'Maximum Score': [5, 5, 5, 5, 10]  # Overall is out of 10
-    })
-
-    # Add student info
-    info_df = pd.DataFrame({
-        'Field': ['Student Name', 'Roll Number', 'Date'],
-        'Value': [student_name, student_roll, datetime.now().strftime('%Y-%m-%d')]
-    })
-
-    # Create Excel writer object
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        # Write student info
-        info_df.to_excel(writer, sheet_name='Evaluation',
-                         startrow=0, index=False)
-
-        # Write scores
-        df.to_excel(writer, sheet_name='Evaluation', startrow=5, index=False)
-
-        # Write detailed feedback
-        feedback_df = pd.DataFrame({
-            'Graded Feedback': [feedback],
-            'Code Analysis': [code_analysis] if code_analysis else ['Not available']
-        })
-        feedback_df.to_excel(
-            writer, sheet_name='Detailed Feedback', index=False)
-
-        # Get workbook and worksheet objects
-        workbook = writer.book
-        worksheet = writer.sheets['Evaluation']
-
-        # Add formatting
-        header_format = workbook.add_format({
-            'bold': True,
-            'bg_color': '#D3D3D3',
-            'border': 1
-        })
-
-        # Apply formatting
-        worksheet.set_column('A:C', 20)
-        worksheet.set_row(5, None, header_format)
-
-    buffer.seek(0)
-    return buffer
-
-
-def extract_scores(feedback):
-    scores = {}
-    categories = ['Correctness', 'Adherence to Instructions',
-                  'Code Quality', 'Explanation Quality']
-
-    for category in categories:
-        try:
-            section = feedback.split(f"{category} (0-5):")[1].split("\n")[1]
-            score = float(section.split("Score:")[1].strip())
-            scores[category] = score
-        except:
-            scores[category] = 0
-
-    try:
-        overall = float(feedback.split("OVERALL_GRAGE:")
-                        [1].split("\n")[0].strip())
-        scores['Overall'] = overall
-    except:
-        scores['Overall'] = 0
-
-    return scores
 
 
 def main():
@@ -400,6 +349,17 @@ def main():
     student_notebook = st.file_uploader(
         "Upload Student's Notebook", type=["ipynb"])
 
+    # Add logo and footer to app
+    st.markdown(
+        """
+        <div style='position: fixed; bottom: 10px; right: 10px; opacity: 0.3;'>
+            <img src='https://raw.githubusercontent.com/yourusername/DQ_logo/main/DQ_logo.jpg' width='100'>
+            <div style='color: #666; font-size: 12px; text-align: right;'>Powered by Dataquatz</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     if st.button("Grade Notebook") and student_name and student_roll and assignment_notebook and student_notebook:
         with st.spinner("Evaluating submission..."):
             assignment_cells = read_notebook(assignment_notebook)
@@ -423,28 +383,17 @@ def main():
             st.subheader("Evaluation Report")
             st.markdown(formatted_feedback, unsafe_allow_html=True)
 
-            # PDF and Excel report generation
+            # PDF report generation
             pdf_report = create_pdf_report(
                 feedback, student_name, student_roll, code_analysis)
-            excel_report = create_excel_report(
-                feedback, student_name, student_roll, code_analysis)
 
-            # Download buttons
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    label="Download PDF Report",
-                    data=pdf_report,
-                    file_name=f"{student_roll}_report.pdf",
-                    mime="application/pdf"
-                )
-            with col2:
-                st.download_button(
-                    label="Download Excel Report",
-                    data=excel_report,
-                    file_name=f"{student_roll}_report.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+            # Download button
+            st.download_button(
+                label="Download PDF Report",
+                data=pdf_report,
+                file_name=f"{student_roll}_report.pdf",
+                mime="application/pdf"
+            )
 
     # Add documentation section in sidebar
     st.sidebar.markdown("""
@@ -453,7 +402,7 @@ def main():
     2. Upload the instructor's notebook (assignment template)
     3. Upload the student's completed notebook
     4. Click 'Grade Notebook' to generate evaluation
-    5. View report and download in PDF/Excel formats
+    5. View report and download PDF
 
     ### Evaluation Criteria
     - Correctness of solutions
@@ -464,8 +413,9 @@ def main():
 
     ### Requirements
     - OpenAI API key (in secrets.toml)
-    - Python 3.8+
-    - Required libraries: streamlit, openai, nbformat, reportlab, pandas, pygments
+    - Python 3.10
+    - Required libraries: streamlit, openai, nbformat, reportlab, pygments
+    - DQ_logo.jpg in working directory
     """)
 
 
