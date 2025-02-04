@@ -239,7 +239,7 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
     def add_footer(canvas):
         canvas.saveState()
         # Add logo
-        logo = Image(LOGO_PATH, width=80, height=40)
+        logo = Image(LOGO_PATH, width=20, height=20)
         logo.drawOn(canvas, width - 120, 40)
         # Add footer text
         canvas.setFillColorRGB(0.5, 0.5, 0.5, 0.4)
