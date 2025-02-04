@@ -8,12 +8,66 @@ from reportlab.lib.utils import simpleSplit
 from datetime import datetime
 import pandas as pd
 import io
+import re
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import get_lexer_by_name
 
 # Constants
-APP_VERSION = "v2"
+APP_VERSION = "v2.4"
 
 # Get API key from Streamlit secrets
 api_key = st.secrets["OPENAI_API_KEY"]
+
+
+def analyze_code_patterns(code):
+    client = openai.OpenAI(api_key=api_key)
+    prompt = f"""
+    Analyze the following code for patterns and practices (without grading it):
+
+    {code}
+
+    Please provide analysis in the following format:
+
+    **Code Structure Analysis:**
+    1. [Describe overall code organization]
+    2. [Identify main components/functions]
+    3. [Note any design patterns used]
+
+    **Programming Practices:**
+    1. [List good programming practices found]
+    2. [Identify areas that could use improvement]
+    3. [Note any interesting coding patterns]
+
+    **Code Style:**
+    1. [Comment on naming conventions]
+    2. [Evaluate code formatting]
+    3. [Assess documentation/comments]
+
+    **Advanced Features Used:**
+    1. [List any advanced language features]
+    2. [Note any libraries/frameworks used effectively]
+    3. [Identify any optimization techniques]
+
+    **Potential Learning Opportunities:**
+    1. [Suggest areas for learning/improvement]
+    2. [Recommend additional techniques]
+    3. [Propose alternative approaches]
+    """
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a code analysis expert providing detailed, constructive feedback."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.2,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Error analyzing code: {e}"
 
 
 def read_notebook(notebook_file):
@@ -35,51 +89,12 @@ def extract_markdown_cells(cells):
     return [cell['source'] for cell in cells if cell['cell_type'] == 'markdown']
 
 
-def create_pdf_report(feedback, student_name, student_roll):
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
-
-    # Header
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(50, height - 50, "Lab Submission Evaluation Report")
-
-    c.setFont("Helvetica", 10)
-    c.drawString(width - 150, height - 30, f"App Version: {APP_VERSION}")
-
-    # Student Info
-    c.setFont("Helvetica", 12)
-    c.drawString(50, height - 80, f"Student Name: {student_name}")
-    c.drawString(50, height - 100, f"Roll Number: {student_roll}")
-    c.drawString(50, height - 120,
-                 f"Date: {datetime.now().strftime('%Y-%m-%d')}")
-
-    # Extract overall grade
-    overall_grade = ""
-    if "OVERALL_GRADE:" in feedback:
-        overall_grade = feedback.split("OVERALL_GRADE:")[
-            1].split("\n")[0].strip()
-        c.drawString(50, height - 140, f"Overall Grade: {overall_grade}/10")
-
-    # Detailed feedback
-    y_position = height - 180
-    c.setFont("Helvetica", 10)
-
-    # Split feedback into lines and wrap text
-    for line in feedback.split('\n'):
-        if line.strip():
-            wrapped_text = simpleSplit(line, 'Helvetica', 10, width - 100)
-            for wrapped_line in wrapped_text:
-                if y_position < 50:  # Start new page if near bottom
-                    c.showPage()
-                    y_position = height - 50
-                    c.setFont("Helvetica", 10)
-                c.drawString(50, y_position, wrapped_line)
-                y_position -= 15
-
-    c.save()
-    buffer.seek(0)
-    return buffer
+def format_code_for_display(code, language='python'):
+    lexer = get_lexer_by_name(language)
+    formatter = HtmlFormatter(style='monokai')
+    result = highlight(code, lexer, formatter)
+    css = formatter.get_style_defs('.highlight')
+    return css, result
 
 
 def evaluate_submission(api_key, assignment_cells, student_cells):
@@ -138,7 +153,7 @@ def evaluate_submission(api_key, assignment_cells, student_cells):
         return f"Error with OpenAI API: {e}"
 
 
-def format_feedback(feedback, student_name, student_roll):
+def format_feedback(feedback, student_name, student_roll, code_analysis=""):
     current_date = datetime.now().strftime("%Y-%m-%d")
 
     overall_grade = ""
@@ -147,49 +162,144 @@ def format_feedback(feedback, student_name, student_roll):
             1].split("\n")[0].strip()
 
     formatted_feedback = f"""
-    # Lab Submission Evaluation Report
+    <div style="font-size: 24px; font-weight: bold; margin-bottom: 20px">Lab Submission Evaluation Report</div>
     
-    <div style='text-align: right; color: rgba(128, 128, 128, 0.7);'>App Version used to grade: {APP_VERSION}</div>
+    <div style='text-align: right; color: rgba(128, 128, 128, 0.7); margin-top: -40px;'>App Version used to grade: {APP_VERSION}</div>
     
-    **Date:** {current_date}  
-    **Student Name:** {student_name}  
-    **Roll Number:** {student_roll}  
-    **Overall Grade:** {overall_grade}/10
+    <hr style="border-top: 2px solid #ccc; margin: 20px 0;">
     
-    ---
+    <div style="font-size: 14px;">
+    <strong>Date:</strong> {current_date}<br>
+    <strong>Student Name:</strong> {student_name}<br>
+    <strong>Roll Number:</strong> {student_roll}
+    </div>
     
-    ## Detailed Evaluation
+    <div style="font-size: 18px; font-weight: bold; margin: 20px 0;">
+    Overall Grade: {overall_grade}/10
+    </div>
     
-    {feedback.split("1. Correctness")[1]}
+    <hr style="border-top: 1px solid #eee; margin: 20px 0;">
+    
+    <div style="font-size: 20px; font-weight: bold;">Detailed Evaluation</div>
+    
+    <div style="font-size: 13px;">
     """
+
+    # Process the detailed feedback sections
+    detailed_feedback = feedback.split("1. Correctness")[1]
+    sections = detailed_feedback.split('\n')
+    processed_sections = []
+
+    for line in sections:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Make section titles bold and larger
+        if any(line.startswith(f"{i}.") for i in range(1, 5)) or "Summary of Key Recommendations:" in line:
+            processed_sections.append(
+                f'<div style="font-size: 16px; font-weight: bold; margin-top: 20px;">{line}</div>')
+        # Make subsection headers bold
+        elif any(header in line for header in ["Score:", "Reasoning:", "Areas for Improvement:", "Key Strengths:"]):
+            processed_sections.append(f'<strong>{line}</strong>')
+        else:
+            processed_sections.append(line)
+
+    formatted_feedback += '\n'.join(processed_sections)
+
+    # Add code analysis section if available
+    if code_analysis:
+        formatted_feedback += f"""
+        <hr style="border-top: 1px solid #eee; margin: 20px 0;">
+        <div style="font-size: 20px; font-weight: bold;">Detailed Code Analysis (Ungraded)</div>
+        <div style="font-size: 13px;">
+        {code_analysis}
+        </div>
+        """
+
+    formatted_feedback += "</div>"
 
     return formatted_feedback
 
 
-def extract_scores(feedback):
-    scores = {}
-    categories = ['Correctness', 'Adherence to Instructions',
-                  'Code Quality', 'Explanation Quality']
+def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
 
-    for category in categories:
-        try:
-            section = feedback.split(f"{category} (0-5):")[1].split("\n")[1]
-            score = float(section.split("Score:")[1].strip())
-            scores[category] = score
-        except:
-            scores[category] = 0
+    # Header with larger, bold font
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(50, height - 50, "Lab Submission Evaluation Report")
 
-    try:
-        overall = float(feedback.split("OVERALL_GRADE:")
-                        [1].split("\n")[0].strip())
-        scores['Overall'] = overall
-    except:
-        scores['Overall'] = 0
+    # App version in translucent gray
+    c.setFillColorRGB(0.5, 0.5, 0.5, 0.6)
+    c.setFont("Helvetica", 10)
+    c.drawString(width - 150, height - 30, f"App Version: {APP_VERSION}")
+    c.setFillColorRGB(0, 0, 0, 1)
 
-    return scores
+    # Separator line
+    c.setLineWidth(2)
+    c.line(50, height - 70, width - 50, height - 70)
+
+    # Student Info with medium font
+    c.setFont("Helvetica", 12)
+    c.drawString(50, height - 90, f"Student Name: {student_name}")
+    c.drawString(50, height - 110, f"Roll Number: {student_roll}")
+    c.drawString(50, height - 130,
+                 f"Date: {datetime.now().strftime('%Y-%m-%d')}")
+
+    # Extract and display overall grade
+    overall_grade = ""
+    if "OVERALL_GRADE:" in feedback:
+        overall_grade = feedback.split("OVERALL_GRADE:")[
+            1].split("\n")[0].strip()
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(50, height - 160, f"Overall Grade: {overall_grade}/10")
+
+    # Another separator line before detailed feedback
+    c.setLineWidth(1)
+    c.line(50, height - 180, width - 50, height - 180)
+
+    # Detailed feedback
+    y_position = height - 200
+    text_width = width - 100
+
+    # Process feedback sections
+    all_content = feedback + "\n\n" + code_analysis if code_analysis else feedback
+    sections = all_content.split('\n')
+
+    for line in sections:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Handle section titles
+        if any(line.startswith(f"{i}.") for i in range(1, 5)) or "Summary of Key Recommendations:" in line or "Code Analysis" in line:
+            c.setFont("Helvetica-Bold", 12)
+            if y_position < 100:
+                c.showPage()
+                y_position = height - 50
+            y_position -= 20
+        else:
+            c.setFont("Helvetica", 10)
+
+        wrapped_text = simpleSplit(line, c._fontname, c._fontsize, text_width)
+
+        for wrapped_line in wrapped_text:
+            if y_position < 50:
+                c.showPage()
+                y_position = height - 50
+                c.setFont("Helvetica", 10)
+
+            c.drawString(50, y_position, wrapped_line)
+            y_position -= 15
+
+    c.save()
+    buffer.seek(0)
+    return buffer
 
 
-def create_excel_report(feedback, student_name, student_roll):
+def create_excel_report(feedback, student_name, student_roll, code_analysis=""):
     scores = extract_scores(feedback)
 
     # Create DataFrame
@@ -216,14 +326,18 @@ def create_excel_report(feedback, student_name, student_roll):
         df.to_excel(writer, sheet_name='Evaluation', startrow=5, index=False)
 
         # Write detailed feedback
-        pd.DataFrame({'Detailed Feedback': [feedback]}).to_excel(
+        feedback_df = pd.DataFrame({
+            'Graded Feedback': [feedback],
+            'Code Analysis': [code_analysis] if code_analysis else ['Not available']
+        })
+        feedback_df.to_excel(
             writer, sheet_name='Detailed Feedback', index=False)
 
         # Get workbook and worksheet objects
         workbook = writer.book
         worksheet = writer.sheets['Evaluation']
 
-        # Add some formatting
+        # Add formatting
         header_format = workbook.add_format({
             'bold': True,
             'bg_color': '#D3D3D3',
@@ -236,6 +350,29 @@ def create_excel_report(feedback, student_name, student_roll):
 
     buffer.seek(0)
     return buffer
+
+
+def extract_scores(feedback):
+    scores = {}
+    categories = ['Correctness', 'Adherence to Instructions',
+                  'Code Quality', 'Explanation Quality']
+
+    for category in categories:
+        try:
+            section = feedback.split(f"{category} (0-5):")[1].split("\n")[1]
+            score = float(section.split("Score:")[1].strip())
+            scores[category] = score
+        except:
+            scores[category] = 0
+
+    try:
+        overall = float(feedback.split("OVERALL_GRAGE:")
+                        [1].split("\n")[0].strip())
+        scores['Overall'] = overall
+    except:
+        scores['Overall'] = 0
+
+    return scores
 
 
 def main():
@@ -278,39 +415,58 @@ def main():
 
             feedback = evaluate_submission(
                 api_key, assignment_content, student_content)
+            code_analysis = analyze_code_patterns("\n".join(student_code))
 
-            if "Error" in feedback:
-                st.error(feedback)
-            else:
-                st.success("Grading completed!")
-                formatted_feedback = format_feedback(
-                    feedback, student_name, student_roll)
-                st.markdown(formatted_feedback)
+            formatted_feedback = format_feedback(
+                feedback, student_name, student_roll, code_analysis)
 
-                # Create download buttons for reports
-                col1, col2 = st.columns(2)
+            st.subheader("Evaluation Report")
+            st.markdown(formatted_feedback, unsafe_allow_html=True)
 
-                # PDF Download
-                pdf_buffer = create_pdf_report(
-                    feedback, student_name, student_roll)
-                with col1:
-                    st.download_button(
-                        label="Download PDF Report",
-                        data=pdf_buffer,
-                        file_name=f"grade_report_{student_roll}.pdf",
-                        mime="application/pdf"
-                    )
+            # PDF and Excel report generation
+            pdf_report = create_pdf_report(
+                feedback, student_name, student_roll, code_analysis)
+            excel_report = create_excel_report(
+                feedback, student_name, student_roll, code_analysis)
 
-                # Excel Download
-                excel_buffer = create_excel_report(
-                    feedback, student_name, student_roll)
-                with col2:
-                    st.download_button(
-                        label="Download Excel Report",
-                        data=excel_buffer,
-                        file_name=f"grade_report_{student_roll}.xlsx",
-                        mime="application/vnd.ms-excel"
-                    )
+            # Download buttons
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    label="Download PDF Report",
+                    data=pdf_report,
+                    file_name=f"{student_roll}_report.pdf",
+                    mime="application/pdf"
+                )
+            with col2:
+                st.download_button(
+                    label="Download Excel Report",
+                    data=excel_report,
+                    file_name=f"{student_roll}_report.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+    # Add documentation section in sidebar
+    st.sidebar.markdown("""
+    ### How to Use This App
+    1. Enter student name and roll number
+    2. Upload the instructor's notebook (assignment template)
+    3. Upload the student's completed notebook
+    4. Click 'Grade Notebook' to generate evaluation
+    5. View report and download in PDF/Excel formats
+
+    ### Evaluation Criteria
+    - Correctness of solutions
+    - Adherence to instructions
+    - Code quality and best practices
+    - Quality of explanations
+    - Additional code pattern analysis
+
+    ### Requirements
+    - OpenAI API key (in secrets.toml)
+    - Python 3.8+
+    - Required libraries: streamlit, openai, nbformat, reportlab, pandas, pygments
+    """)
 
 
 if __name__ == "__main__":
