@@ -220,7 +220,7 @@ def format_feedback(feedback, student_name, student_roll, code_analysis=""):
     # Add watermark to the app interface
     formatted_feedback += """
     <div style='position: fixed; bottom: 10px; right: 10px; opacity: 0.3;'>
-        <img src='https://github.com/Mountain311/LLM_checker/blob/main/DQ_logo.jpg' width='100'>
+        <img src='https://raw.githubusercontent.com/Mountain311/LLM_checker/main/DQ_logo.jpg' width='100'>
         <div style='color: #666; font-size: 12px; text-align: right;'>Powered by Dataquatz</div>
     </div>
     """
@@ -325,13 +325,18 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
 
 
 def main():
-    st.title("Automated Notebook Grading App")
-
-    # Display app version in top right
     st.markdown(
-        f"<div style='position: absolute; top: 20px; right: 20px; color: rgba(128, 128, 128, 0.7);'>App Version: {APP_VERSION}</div>",
+        f"""
+        <div style='position: fixed; top: 20px; right: 20px; text-align: right; opacity: 0.5;'>
+            <div style='color: #666; font-size: 12px; margin-bottom: 5px;'>App Version: {APP_VERSION}</div>
+            <img src='https://raw.githubusercontent.com/Mountain311/LLM_checker/main/DQ_logo.jpg' width='100'>
+            <div style='color: #666; font-size: 12px;'>Powered by Dataquatz</div>
+        </div>
+        """,
         unsafe_allow_html=True
     )
+
+    st.title("Automated Notebook Grading App")
 
     if not api_key:
         st.error("API key not found. Please set OPENAI_API_KEY in secrets.toml.")
@@ -348,17 +353,6 @@ def main():
         "Upload Instructor's Notebook", type=["ipynb"])
     student_notebook = st.file_uploader(
         "Upload Student's Notebook", type=["ipynb"])
-
-    # Add logo and footer to app
-    st.markdown(
-        """
-        <div style='position: fixed; bottom: 10px; right: 10px; opacity: 0.3;'>
-            <img src='https://github.com/Mountain311/LLM_checker/blob/main/DQ_logo.jpg' width='100'>
-            <div style='color: #666; font-size: 12px; text-align: right;'>Powered by Dataquatz</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 
     if st.button("Grade Notebook") and student_name and student_roll and assignment_notebook and student_notebook:
         with st.spinner("Evaluating submission..."):
