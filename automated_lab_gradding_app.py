@@ -220,7 +220,7 @@ def format_feedback(feedback, student_name, student_roll, code_analysis=""):
     # Add watermark to the app interface
     formatted_feedback += """
     <div style='position: fixed; bottom: 10px; right: 10px; opacity: 0.3;'>
-        <img src='https://raw.githubusercontent.com/yourusername/DQ_logo/main/DQ_logo.jpg' width='100'>
+        <img src='https://github.com/Mountain311/LLM_checker/blob/main/DQ_logo.jpg' width='100'>
         <div style='color: #666; font-size: 12px; text-align: right;'>Powered by Dataquatz</div>
     </div>
     """
@@ -353,7 +353,7 @@ def main():
     st.markdown(
         """
         <div style='position: fixed; bottom: 10px; right: 10px; opacity: 0.3;'>
-            <img src='https://raw.githubusercontent.com/yourusername/DQ_logo/main/DQ_logo.jpg' width='100'>
+            <img src='https://github.com/Mountain311/LLM_checker/blob/main/DQ_logo.jpg' width='100'>
             <div style='color: #666; font-size: 12px; text-align: right;'>Powered by Dataquatz</div>
         </div>
         """,
