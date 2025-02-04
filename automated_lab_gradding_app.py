@@ -374,9 +374,6 @@ def main():
             formatted_feedback = format_feedback(
                 feedback, student_name, student_roll, code_analysis)
 
-            st.subheader("Evaluation Report")
-            st.markdown(formatted_feedback, unsafe_allow_html=True)
-
             # PDF report generation
             pdf_report = create_pdf_report(
                 feedback, student_name, student_roll, code_analysis)
