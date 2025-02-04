@@ -391,6 +391,8 @@ def main():
 
     # Add documentation section in sidebar
     st.sidebar.markdown("""
+    ### Version: {APP_VERSION}
+    
     ### How to Use This App
     1. Enter student name and roll number
     2. Upload the instructor's notebook (assignment template)
