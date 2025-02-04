@@ -240,7 +240,7 @@ def create_pdf_report(feedback, student_name, student_roll, code_analysis=""):
         canvas.saveState()
         # Add logo
         logo = Image(LOGO_PATH, width=20, height=20)
-        logo.drawOn(canvas, width - 80, 40)
+        logo.drawOn(canvas, width - 60, 40)
         # Add footer text
         canvas.setFillColorRGB(0.5, 0.5, 0.5, 0.4)
         canvas.setFont("Helvetica", 10)
